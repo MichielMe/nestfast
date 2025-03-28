@@ -1,4 +1,4 @@
-from app.api.v1 import auth_router, workouts_router
+from app.api.v1 import auth_router, routines_router, workouts_router
 from app.db import Base, engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,3 +22,4 @@ def read_root():
 
 app.include_router(auth_router)
 app.include_router(workouts_router)
+app.include_router(routines_router)
