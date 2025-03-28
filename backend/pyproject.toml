@@ -5,7 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "bcrypt>=4.0.1",
     "fastapi[standard]>=0.115.11",
+    "passlib>=1.7.4",
+    "python-jose[cryptography]>=3.4.0",
+    "sentry-sdk[fastapi]>=2.24.1",
+    "sqlalchemy>=2.0.39",
 ]
 
 [dependency-groups]
