@@ -1,12 +1,9 @@
-from contextlib import asynccontextmanager
-
-import sentry_sdk
 from app.api.v1 import auth_router, workouts_router
 from app.db import Base, engine
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 Base.metadata.create_all(bind=engine)
 
