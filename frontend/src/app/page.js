@@ -1,103 +1,255 @@
-import Image from "next/image";
+"use client";
+
+import { useContext, useState, useEffect } from "react";
+import AuthContext from "./context/AuthContext";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { user, logout, isInitialized } = useContext(AuthContext);
+  const router = useRouter();
+  const [workouts, setWorkouts] = useState([]);
+  const [routines, setRoutines] = useState([]);
+  const [workoutName, setWorkoutName] = useState("");
+  const [workoutDescription, setWorkoutDescription] = useState("");
+  const [activeView, setActiveView] = useState("workouts");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (isInitialized && !user) {
+      router.push("/login");
+    }
+  }, [isInitialized, user, router]);
+
+  // Fetch data when authenticated
+  useEffect(() => {
+    if (!isInitialized || !user) return;
+
+    async function fetchData() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Configure for this request only
+        const config = {
+          baseURL: "http://localhost:8000",
+          headers: { Authorization: `Bearer ${user.token}` },
+        };
+
+        // Get data
+        const workoutsRes = await axios.get("/workouts/workouts", config);
+        const routinesRes = await axios.get("/routines", config);
+
+        setWorkouts(workoutsRes.data || []);
+        setRoutines(routinesRes.data || []);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+        setError("Failed to fetch data. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [user, isInitialized]);
+
+  // Handle adding a new workout
+  const handleAddWorkout = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!workoutName || !workoutDescription) {
+      alert("Please fill all fields");
+      return;
+    }
+
+    try {
+      const config = {
+        baseURL: "http://localhost:8000",
+        headers: { Authorization: `Bearer ${user.token}` },
+      };
+
+      const response = await axios.post(
+        "/workouts",
+        {
+          name: workoutName,
+          description: workoutDescription,
+        },
+        config
+      );
+
+      setWorkouts([...workouts, response.data]);
+      setWorkoutName("");
+      setWorkoutDescription("");
+    } catch (error) {
+      console.error("Failed to add workout:", error);
+      alert("Failed to add workout");
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (view) => (e) => {
+    e.preventDefault();
+    setActiveView(view);
+  };
+
+  // Handle logout
+  const handleLogout = (e) => {
+    e.preventDefault();
+    logout();
+  };
+
+  // Show loading spinner while context initializes
+  if (!isInitialized || isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <span className="loading loading-spinner loading-lg"></span>
+      </div>
+    );
+  }
+
+  // If not logged in but initialization is complete, return null (redirect in progress)
+  if (!user) {
+    return null;
+  }
+
+  // Test if buttons work
+  return (
+    <div className="container mx-auto p-4 max-w-4xl">
+      <header className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">NestFast Dashboard</h1>
+        <button
+          className="btn btn-error"
+          onClick={handleLogout}
+          style={{ pointerEvents: "auto" }}
+        >
+          Logout
+        </button>
+      </header>
+
+      {error && (
+        <div
+          className="alert alert-error mb-4"
+          style={{ pointerEvents: "auto" }}
+        >
+          <p>{error}</p>
+          <button className="ml-auto" onClick={() => setError(null)}>
+            ×
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
+      )}
+
+      <div className="mb-4">
+        <Link href="/test-page" className="btn btn-outline btn-sm">
+          Go to Test Page
+        </Link>
+      </div>
+
+      <div className="tabs mb-6" style={{ pointerEvents: "auto" }}>
         <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="#"
+          className={`tab tab-lg tab-bordered ${
+            activeView === "workouts" ? "tab-active" : ""
+          }`}
+          onClick={handleTabChange("workouts")}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
+          Workouts
         </a>
         <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="#"
+          className={`tab tab-lg tab-bordered ${
+            activeView === "routines" ? "tab-active" : ""
+          }`}
+          onClick={handleTabChange("routines")}
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
+          Routines
         </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+
+      {activeView === "workouts" && (
+        <>
+          <div
+            className="bg-base-200 p-6 rounded-lg mb-6"
+            style={{ pointerEvents: "auto" }}
+          >
+            <h2 className="text-2xl font-bold mb-4">Add Workout</h2>
+            <form onSubmit={handleAddWorkout}>
+              <div className="form-control mb-4">
+                <label className="label">
+                  <span className="label-text">Workout Name</span>
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={workoutName}
+                  onChange={(e) => setWorkoutName(e.target.value)}
+                  style={{ pointerEvents: "auto" }}
+                  required
+                />
+              </div>
+              <div className="form-control mb-4">
+                <label className="label">
+                  <span className="label-text">Description</span>
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={workoutDescription}
+                  onChange={(e) => setWorkoutDescription(e.target.value)}
+                  style={{ pointerEvents: "auto" }}
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ pointerEvents: "auto" }}
+              >
+                Add Workout
+              </button>
+            </form>
+          </div>
+
+          <h3 className="text-xl font-bold mb-4">Your Workouts</h3>
+          {workouts.length === 0 ? (
+            <div className="alert alert-info">No workouts found</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {workouts.map((workout) => (
+                <div key={workout.id} className="card bg-base-100 shadow-xl">
+                  <div className="card-body">
+                    <h3 className="card-title">{workout.name}</h3>
+                    <p>{workout.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeView === "routines" && (
+        <>
+          <h2 className="text-2xl font-bold mb-4">Your Routines</h2>
+          {routines.length === 0 ? (
+            <div className="alert alert-info">No routines found</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {routines.map((routine) => (
+                <div key={routine.id} className="card bg-base-100 shadow-xl">
+                  <div className="card-body">
+                    <h3 className="card-title">{routine.name}</h3>
+                    <p>{routine.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
